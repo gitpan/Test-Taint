@@ -2,17 +2,18 @@ package Test::Taint;
 
 =head1 NAME
 
-Test::Taint - Check for (un)taintedness
+Test::Taint - Tools to test taintedness
 
 =head1 VERSION
 
-Version 0.01
+Version 1.00
 
-    $Header: /home/cvs/test-taint/Taint.pm,v 1.7 2004/02/04 06:35:21 andy Exp $
+    $Header: /home/cvs/test-taint/Taint.pm,v 1.11 2004/03/15 02:12:00 andy Exp $
 
 =cut
 
-our $VERSION = "0.01";
+use vars qw( $VERSION );
+$VERSION = "1.00";
 
 =head1 SYNOPSIS
 
@@ -41,13 +42,17 @@ in standard L<Test::More> style.
 use strict;
 use warnings;
 
+use DynaLoader;
 use Test::Builder;
-use vars qw( $TAINT $TAINT0 );
+use vars qw( $TAINT );
 
 my $Test = Test::Builder->new;
 
-use vars qw( @EXPORT );
+use vars qw( @EXPORT @ISA );
 @EXPORT = qw( taint tainted tainted_ok untainted_ok taint_checking taint_checking_ok );
+@ISA = qw(DynaLoader);
+
+bootstrap Test::Taint $VERSION;
 
 sub import {
     my $self = shift;
@@ -148,41 +153,29 @@ sub tainted {
 
 =head2 taint( @list )
 
-Marks each (apparently) taintable argument in I<@list> as being
-tainted. (References and C<undef> are never taintable and are left
-unchanged. Some C<tie>d and magical variables may fail to be tainted by
-this routine, try as it may.)
+Marks each (apparently) taintable argument in I<@list> as being tainted.
+
+References can be tainted like any other scalar, but it doesn't make
+sense to, so they will B<not> be tainted by this function.
+
+Some C<tie>d and magical variables may fail to be tainted by this routine,
+try as it may.)
 
 =cut
 
-sub taint (@) {
+sub taint {
     local $_;
-    for (@_) {
-        next if not defined;
-        next if ref;
-        eval {
-            if ( not $_ & '00' | '00' ) {
-                # Must already be a number,
-                # so don't stringify it now
-                $_ += $TAINT0;
-            } else {
-                $_ .= $TAINT;
-            }
-        };
-        if ($@ =~ /read-only/) {
-            require Carp;
-            &Carp::carp("Attempt to taint read-only value");
-        } elsif ($@) {
-            require Carp;
-            &Carp::carp("Unexpected error: $@");
-        }
-    } # for
-    return;         # explicitly, no return value
+
+    for ( @_ ) {
+        _taint($_) unless ref;
+    }
 }
+
+# _taint() is an external function in Taint.xs
 
 BEGIN {
     MAKE_SOME_TAINT: {
-        # Somehow we need to get some taintedness into $Test::Taint::brush
+        # Somehow we need to get some taintedness into $Test::Taint::TAINT
         # Let's try the easy way first. Either of these should be
         # tainted, unless somebody has untainted them, so this
         # will almost always work on the first try.
@@ -212,7 +205,6 @@ BEGIN {
 
     # Sanity check
     die "Our taintbrush should have zero length!" if length $TAINT;
-    $TAINT0 = 0+"0$TAINT";
 }
 
 

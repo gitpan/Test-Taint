@@ -1,5 +1,15 @@
-# $Id: Changes,v 1.2 2004/02/04 05:56:56 andy Exp $
 Revision history for Perl extension Test::Taint
+
+1.00
+        This is the "Thanks, Dave Rolsky" release.
+
+        [FIXES]
+        * taint() could corrupt a string and set it to 0.
+        * Removed requirement on Test::Builder::Tester.
+
+        [ENHANCEMENTS]
+        * The taint() function now goes thru XS, instead of Perl magic.
+
 
 0.01    Tue Feb  3 23:56:25 CST 2004
         Brand new, and ready to go.

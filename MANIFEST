@@ -1,8 +1,10 @@
 Changes
-Taint.pm
+Makefile.PL
 MANIFEST
 META.yml
-Makefile.PL
+ppport.h
+Taint.pm
+Taint.xs
 t/00.load.t
 t/no-dash-T.t
 t/pod-coverage.t

@@ -1,6 +1,7 @@
 #!perl -T
 
-use Test::Taint tests=>4;
+use Test::More;
+use Test::Taint tests=>7;
 
 taint_checking_ok();
 
@@ -11,3 +12,9 @@ tainted_ok( $foo, 'Gets dirty' );
 $foo =~ /(\d+)/;
 $foo = $1;
 untainted_ok( $foo, 'Reclean' );
+
+my $bar = 'bar';
+untainted_ok( $bar, 'Starts clean' );
+taint($bar);
+tainted_ok( $bar, 'Gets dirty' );
+is($bar, 'bar', 'String value stays the same');
