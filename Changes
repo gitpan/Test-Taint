@@ -1,6 +1,13 @@
 Revision history for Perl extension Test::Taint
 
-1.00
+1.02    April 22nd, 2004
+        This is the "Thanks, Dan Kubb" release.
+
+        [ENHANCEMENTS]
+        * Added taint_deeply() to taint all elements in a structure.
+
+
+1.00    March 14th, 2004
         This is the "Thanks, Dave Rolsky" release.
 
         [FIXES]

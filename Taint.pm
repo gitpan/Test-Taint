@@ -6,14 +6,14 @@ Test::Taint - Tools to test taintedness
 
 =head1 VERSION
 
-Version 1.00
+Version 1.02
 
-    $Header: /home/cvs/test-taint/Taint.pm,v 1.11 2004/03/15 02:12:00 andy Exp $
+    $Header: /home/cvs/test-taint/Taint.pm,v 1.13 2004/04/23 04:30:59 andy Exp $
 
 =cut
 
 use vars qw( $VERSION );
-$VERSION = "1.00";
+$VERSION = "1.02";
 
 =head1 SYNOPSIS
 
@@ -44,12 +44,14 @@ use warnings;
 
 use DynaLoader;
 use Test::Builder;
+use overload;
+use Scalar::Util;
 use vars qw( $TAINT );
 
 my $Test = Test::Builder->new;
 
 use vars qw( @EXPORT @ISA );
-@EXPORT = qw( taint tainted tainted_ok untainted_ok taint_checking taint_checking_ok );
+@EXPORT = qw( taint taint_deeply tainted tainted_ok untainted_ok taint_checking taint_checking_ok );
 @ISA = qw(DynaLoader);
 
 bootstrap Test::Taint $VERSION;
@@ -167,11 +169,61 @@ sub taint {
     local $_;
 
     for ( @_ ) {
-        _taint($_) unless ref;
+        _taint($_) unless ref or Scalar::Util::readonly $_;
     }
 }
 
 # _taint() is an external function in Taint.xs
+
+=head2 taint_deeply( @list )
+
+Similar to C<taint>, except that if any elements in I<@list> are
+references, it walks deeply into the data structure and marks each
+taintable argument as being tainted.
+
+If any variables are C<tie>d this will taint all the scalars within
+the tied object.
+
+=cut
+
+sub taint_deeply {
+    my @stack = \@_;
+
+    my %seen;
+
+    while(@stack) {
+        my $node = pop @stack;
+
+        # skip the node if its not a reference
+        next unless defined $node;
+
+        my($realpack, $realtype, $id) = overload::StrVal($node) =~ /\A(?:(.+)\=)?(HASH|ARRAY|GLOB|SCALAR|REF)\((0x[[:xdigit:]]+)\)\z/
+            or next;
+
+        # taint the contents of tied objects
+        if(my $tied = $realtype eq 'HASH'   ? tied %$node : 
+                      $realtype eq 'ARRAY'  ? tied @$node :
+                      $realtype eq 'SCALAR' ? tied $$node : undef)  {
+            push @stack, $tied;
+            next;
+        }
+
+        # prevent circular references from being traversed
+        no warnings 'uninitialized';
+        next if $seen{$realpack, $realtype, $id}++;
+
+        # attempt to taint all non-references, then traverse the references
+        push @stack,
+            $realtype eq 'HASH'                         ? do  { taint values %$node; values %$node  }                       :
+            $realtype eq 'ARRAY'                        ? do  { taint @$node;        @$node         }                       :
+            $realtype eq 'GLOB'                         ? map { taint *$node{$_};    *$node{$_}     } qw(SCALAR ARRAY HASH) :
+            $realtype eq 'SCALAR' || $realtype eq 'REF' ? do  { taint $$node;        $$node         }                       :
+            ();
+    }
+
+    return;
+}
+
 
 BEGIN {
     MAKE_SOME_TAINT: {
