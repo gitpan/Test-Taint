@@ -11,5 +11,6 @@ t/taint.t
 t/taint_deeply.t
 t/tainted.t
 t/tainted_ok.t
+t/tainted_ok_deeply.t
 Taint.pm
 Taint.xs

@@ -1,6 +1,6 @@
 use 5.6.1;
 use strict;
-use warnings;
+use warnings FATAL => 'all';
 use ExtUtils::MakeMaker;
 
 WriteMakefile(

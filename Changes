@@ -1,5 +1,24 @@
 Revision history for Perl extension Test::Taint
 
+1.03_01
+        More goodness from Dan Kubb.
+
+        [ENHANCEMENTS]
+        New functions:
+        * tainted_ok_deeply()
+        * untainted_ok_deeply()
+
+        [INTERNALS]
+        * Added Build.PL for those who prefer Module::Build.
+
+        * Added tests to improve coverage.  It's at 99% coverage now,
+          up from around 80%.
+
+        * Refactored the traversal code so that tainted_deeply and
+          taint_deeply share almost the exact same code to walk the data
+          structure.
+
+
 1.02    April 22nd, 2004
         This is the "Thanks, Dan Kubb" release.
 

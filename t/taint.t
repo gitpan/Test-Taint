@@ -1,7 +1,15 @@
 #!perl -T
 
+BEGIN {
+    for($0, $^X) {
+        ($_) = /(.*)/;
+    }
+}
+
 use Test::More;
-use Test::Taint tests=>7;
+use Test::Taint tests => 10;
+
+use constant VAR => 'VAR';
 
 taint_checking_ok();
 
@@ -18,3 +26,8 @@ untainted_ok( $bar, 'Starts clean' );
 taint($bar);
 tainted_ok( $bar, 'Gets dirty' );
 is($bar, 'bar', 'String value stays the same');
+
+untainted_ok( VAR, 'Starts clean' );
+taint(VAR);
+untainted_ok( VAR, 'Stays clean' );
+is(VAR, 'VAR', 'String value stays the same');

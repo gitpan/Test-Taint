@@ -6,14 +6,14 @@ Test::Taint - Tools to test taintedness
 
 =head1 VERSION
 
-Version 1.02
+Version 1.03_01
 
-    $Header: /home/cvs/test-taint/Taint.pm,v 1.13 2004/04/23 04:30:59 andy Exp $
+    $Header: /home/cvs/test-taint/Taint.pm,v 1.15 2004/07/01 04:46:28 andy Exp $
 
 =cut
 
 use vars qw( $VERSION );
-$VERSION = "1.02";
+$VERSION = "1.03_01";
 
 =head1 SYNOPSIS
 
@@ -42,7 +42,7 @@ in standard L<Test::More> style.
 use strict;
 use warnings;
 
-use DynaLoader;
+use base 'DynaLoader';
 use Test::Builder;
 use overload;
 use Scalar::Util;
@@ -50,9 +50,15 @@ use vars qw( $TAINT );
 
 my $Test = Test::Builder->new;
 
-use vars qw( @EXPORT @ISA );
-@EXPORT = qw( taint taint_deeply tainted tainted_ok untainted_ok taint_checking taint_checking_ok );
-@ISA = qw(DynaLoader);
+use vars qw( @EXPORT );
+@EXPORT = qw( 
+    taint             taint_deeply
+    tainted           tainted_deeply
+    tainted_ok        tainted_ok_deeply
+    untainted_ok      untainted_ok_deeply
+    taint_checking
+    taint_checking_ok
+);
 
 bootstrap Test::Taint $VERSION;
 
@@ -65,7 +71,47 @@ sub import {
     }
     $Test->exported_to($caller);
     $Test->plan(@_);
-}
+} # import
+
+sub _deeply_traverse {
+    my $callback = shift;
+    my @stack    = \@_;
+
+    my %seen;
+
+    while(@stack) {
+        my $node = pop @stack;
+
+        # skip the node if its not a reference
+        next unless defined $node;
+
+        my($realpack, $realtype, $id) = overload::StrVal($node) =~ /\A(?:(.+)\=)?(HASH|ARRAY|GLOB|SCALAR|REF)\((0x[[:xdigit:]]+)\)\z/
+            or next;
+
+        # taint the contents of tied objects
+        if(my $tied = $realtype eq 'HASH'   ? tied %$node : 
+                      $realtype eq 'ARRAY'  ? tied @$node :
+                      $realtype eq 'SCALAR' ? tied $$node : 
+                      $realtype eq 'REF'    ? tied $$node : undef)  {
+            push @stack, $tied;
+            next;
+        }
+
+        # prevent circular references from being traversed
+        no warnings 'uninitialized';
+        next if $seen{$realpack, $realtype, $id}++;
+
+        # perform an action on the node, then push them on the stack for traversal
+        push @stack,
+            $realtype eq 'HASH'   ? $callback->(values %$node) :
+            $realtype eq 'ARRAY'  ? $callback->(@$node)        :
+            $realtype eq 'SCALAR' ? $callback->($$node)        :
+            $realtype eq 'REF'    ? $callback->($$node)        :
+            map $callback->(*$node{$_}), qw(SCALAR ARRAY HASH);   #must be a GLOB
+    }
+
+    return;
+} # _deeply_traverse
 
 =head1 C<Test::More>-style Functions
 
@@ -87,7 +133,7 @@ sub taint_checking_ok {
     $Test->ok( $ok, $msg );
 
     return $ok;
-} # tainted_ok
+} # taint_checking_ok
 
 =head2 tainted_ok( $var [, $message ] )
 
@@ -123,7 +169,48 @@ sub untainted_ok {
     $Test->ok( $ok, $msg );
 
     return $ok;
-} # tainted_ok
+} # untainted_ok
+
+=head2 tainted_ok_deeply( $var [, $message ] )
+
+Checks that I<$var> is tainted.  If I<$var>
+is a reference, it recursively checks every
+variable to make sure they are all tainted.
+
+    tainted_ok_deeply( \%ENV );
+
+=cut
+
+sub tainted_ok_deeply {
+    my $var = shift;
+    my $msg = shift;
+
+    my $ok = tainted_deeply( $var );
+    $Test->ok( $ok, $msg );
+
+    return $ok;
+} # tainted_ok_deeply
+
+=head2 untainted_ok_deeply( $var [, $message ] )
+
+Checks that I<$var> is not tainted.  If I<$var>
+is a reference, it recursively checks every
+variable to make sure they are all not tainted.
+
+    my %env = my_validate( \%ENV );
+    untainted_ok_deeply( \%env );
+
+=cut
+
+sub untainted_ok_deeply {
+    my $var = shift;
+    my $msg = shift;
+   
+    my $ok = !tainted_deeply( $var );
+    $Test->ok( $ok, $msg );
+
+    return $ok;
+} # untainted_ok_deeply
 
 =head1 Helper Functions
 
@@ -139,7 +226,7 @@ Returns true if taint checking is enabled via the -T flag.
 
 sub taint_checking() {
     return tainted( $Test::Taint::TAINT );
-}
+} # taint_checking
 
 =head2 tainted( I<$var> )
 
@@ -148,10 +235,42 @@ Returns boolean saying if C<$var> is tainted.
 =cut
 
 sub tainted {
-    no warnings;
+    no warnings qw(void uninitialized);
 
-    return !eval { join("",@_), kill 0; 1 };
-}
+    return !eval { join('', shift), kill 0; 1 };
+} # tainted
+
+=head2 tainted_deeply( I<$var> )
+
+Returns boolean saying if C<$var> is tainted.  If
+C<$var> is a reference it recursively checks every
+variable to make sure they are all tainted.
+
+=cut
+
+sub tainted_deeply {
+  my $is_tainted = 1;
+
+  _deeply_traverse(
+      sub {
+          foreach (@_) {
+            next
+              if not defined
+              or ref
+              or Scalar::Util::readonly $_
+              or tainted $_;
+
+            $is_tainted = 0;
+            last;
+          }
+
+          return @_;
+      },
+      shift,
+  );
+
+  return $is_tainted;
+} # tainted_deeply
 
 =head2 taint( @list )
 
@@ -171,7 +290,7 @@ sub taint {
     for ( @_ ) {
         _taint($_) unless ref or Scalar::Util::readonly $_;
     }
-}
+} # taint
 
 # _taint() is an external function in Taint.xs
 
@@ -187,43 +306,11 @@ the tied object.
 =cut
 
 sub taint_deeply {
-    my @stack = \@_;
-
-    my %seen;
-
-    while(@stack) {
-        my $node = pop @stack;
-
-        # skip the node if its not a reference
-        next unless defined $node;
-
-        my($realpack, $realtype, $id) = overload::StrVal($node) =~ /\A(?:(.+)\=)?(HASH|ARRAY|GLOB|SCALAR|REF)\((0x[[:xdigit:]]+)\)\z/
-            or next;
-
-        # taint the contents of tied objects
-        if(my $tied = $realtype eq 'HASH'   ? tied %$node : 
-                      $realtype eq 'ARRAY'  ? tied @$node :
-                      $realtype eq 'SCALAR' ? tied $$node : undef)  {
-            push @stack, $tied;
-            next;
-        }
-
-        # prevent circular references from being traversed
-        no warnings 'uninitialized';
-        next if $seen{$realpack, $realtype, $id}++;
-
-        # attempt to taint all non-references, then traverse the references
-        push @stack,
-            $realtype eq 'HASH'                         ? do  { taint values %$node; values %$node  }                       :
-            $realtype eq 'ARRAY'                        ? do  { taint @$node;        @$node         }                       :
-            $realtype eq 'GLOB'                         ? map { taint *$node{$_};    *$node{$_}     } qw(SCALAR ARRAY HASH) :
-            $realtype eq 'SCALAR' || $realtype eq 'REF' ? do  { taint $$node;        $$node         }                       :
-            ();
-    }
-
-    return;
-}
-
+    _deeply_traverse(
+        sub { taint @_; @_ },
+        @_,
+    );
+} # taint_deeply
 
 BEGIN {
     MAKE_SOME_TAINT: {

@@ -3,14 +3,17 @@
 use strict;
 use warnings FATAL => 'all';
 use Test::More;
-use Test::Taint tests => 104;
+use Test::Taint tests => 111;
 
-taint_checking_ok();
+taint_checking_ok('Taint checking is on');
 
 TAINT_A_HASH: {
     my %hash = (
-        value => 7,
+        value   => 7,
+        unknown => undef,
     );
+
+    $hash{circular} = \%hash; 
 
     untainted_ok( $hash{value}, 'Starts clean' );
     taint_deeply( \%hash );
@@ -159,7 +162,7 @@ TAINT_AN_ARRAY_OBJECT: {
 TAINT_A_SCALAR_OBJECT: {
     {
         package My::ObjectScalar;
-        sub new { bless \my $scalar, => shift };
+        sub new { my $scalar; bless \$scalar => shift };
     }
 
     my $scalar_object = My::ObjectScalar->new;
@@ -177,6 +180,32 @@ TAINT_A_SCALAR_OBJECT: {
     untainted_ok( $$scalar_object, 'Reclean' );
     is( $$scalar_object, 84, 'value stays the same' );
     isa_ok( $scalar_object, 'My::ObjectScalar' );
+}
+
+TAINT_A_REF: {
+    {
+        package My::ObjectRef;
+        sub new { 
+            my $ref = \my %hash;;
+            bless \$ref, => shift;
+         };
+    }
+
+    my $ref_object = My::ObjectRef->new;
+    isa_ok( $ref_object, 'My::ObjectRef' );
+    $$ref_object->{key} = 1;
+
+    untainted_ok( $$ref_object->{key}, 'Starts clean' );
+    taint_deeply( $ref_object );
+    tainted_ok( $$ref_object->{key}, 'Gets dirty' );
+    is( $$ref_object->{key}, 1, 'value stays the same' );
+
+    $$ref_object->{key} =~ /\A(\d+)\z/;
+    $$ref_object->{key} = $1;
+
+    untainted_ok( $$ref_object->{key}, 'Reclean' );
+    is( $$ref_object->{key}, 1, 'value stays the same' );
+    isa_ok( $ref_object, 'My::ObjectRef' );
 }
 
 TAINT_A_TIED_HASH: {
