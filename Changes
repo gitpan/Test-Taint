@@ -1,6 +1,8 @@
 Revision history for Perl extension Test::Taint
 
-1.03_01
+1.04    Mon Aug  9 22:06:10 CDT 2004
+        No differences from 1.03_01.
+
         More goodness from Dan Kubb.
 
         [ENHANCEMENTS]
