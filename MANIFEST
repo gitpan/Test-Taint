@@ -1,0 +1,12 @@
+Changes
+Taint.pm
+MANIFEST
+META.yml
+Makefile.PL
+t/00.load.t
+t/no-dash-T.t
+t/pod-coverage.t
+t/pod.t
+t/tainted_ok.t
+t/tainted.t
+t/taint.t

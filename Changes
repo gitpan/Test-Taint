@@ -1,0 +1,5 @@
+# $Id: Changes,v 1.2 2004/02/04 05:56:56 andy Exp $
+Revision history for Perl extension Test::Taint
+
+0.01    Tue Feb  3 23:56:25 CST 2004
+        Brand new, and ready to go.
