@@ -1,7 +1,6 @@
 Changes
 Makefile.PL
 MANIFEST
-META.yml
 ppport.h
 t/00.load.t
 t/no-dash-T.t
@@ -14,3 +13,5 @@ t/tainted_ok.t
 t/tainted_ok_deeply.t
 Taint.pm
 Taint.xs
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

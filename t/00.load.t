@@ -1,7 +1,12 @@
-# $Id: 00.load.t,v 1.1.1.1 2004/02/04 03:46:16 andy Exp $
+#!perl -T
+
+use strict;
+use warnings;
 
 use Test::More tests => 1;
 
-use_ok( 'Test::Taint' );
+use Test::Taint;
 
-diag( "Testing Test::Taint $Test::Taint::VERSION" );
+diag( "Testing Test::Taint $Test::Taint::VERSION, Perl $], $^X" );
+
+pass( 'Module loaded OK' );

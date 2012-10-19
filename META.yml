@@ -1,17 +1,28 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         Test-Taint
-version:      1.04
-version_from: Taint.pm
-installdirs:  site
+---
+abstract: 'Checks for taintedness of variables'
+author:
+  - unknown
+build_requires:
+  ExtUtils::MakeMaker: 0
+configure_requires:
+  ExtUtils::MakeMaker: 0
+dynamic_config: 1
+generated_by: 'ExtUtils::MakeMaker version 6.62, CPAN::Meta::Converter version 2.112621'
+license: unknown
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Test-Taint
+no_index:
+  directory:
+    - t
+    - inc
 requires:
-    overload:                      0
-    Scalar::Util:                  0
-    Test::Builder:                 0
-    Test::More:                    0
-    Tie::Array:                    0
-    Tie::Hash:                     0
-    Tie::Scalar:                   0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.21
+  Scalar::Util: 0
+  Test::Builder: 0
+  Test::More: 0
+  Tie::Array: 0
+  Tie::Hash: 0
+  Tie::Scalar: 0
+  overload: 0
+version: 1.06

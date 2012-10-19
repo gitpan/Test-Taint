@@ -1,5 +1,9 @@
 #!perl -T
 
+## Two techniques that are bad in general but necessary in this test.
+## no critic (Miscellanea::ProhibitTies)
+## no critic (Modules::ProhibitMultiplePackages)
+
 use strict;
 use warnings FATAL => 'all';
 use Test::More;
@@ -13,14 +17,14 @@ TAINT_A_HASH: {
         unknown => undef,
     );
 
-    $hash{circular} = \%hash; 
+    $hash{circular} = \%hash;
 
     untainted_ok( $hash{value}, 'Starts clean' );
     taint_deeply( \%hash );
     tainted_ok( $hash{value}, 'Gets dirty' );
     is( $hash{value}, 7, 'value stays the same' );
 
-    $hash{value} =~ /\A(\d+)\z/;
+    $hash{value} =~ /\A(\d+)\z/ or die;
     $hash{value} = $1;
 
     untainted_ok( $hash{value}, 'Reclean' );
@@ -37,7 +41,7 @@ TAINT_AN_ARRAY: {
     tainted_ok( $array[0], 'Gets dirty' );
     is( $array[0], 7, 'value stays the same' );
 
-    $array[0] =~ /\A(\d+)\z/;
+    $array[0] =~ /\A(\d+)\z/ or die;
     $array[0] = $1;
 
     untainted_ok( $array[0], 'Reclean' );
@@ -52,7 +56,7 @@ TAINT_A_SCALAR: {
     tainted_ok( $scalar, 'Gets dirty' );
     is( $scalar, 14, 'value stays the same' );
 
-    $scalar =~ /\A(\d+)\z/;
+    $scalar =~ /\A(\d+)\z/ or die;
     $scalar = $1;
 
     untainted_ok( $scalar, 'Reclean' );
@@ -83,20 +87,20 @@ TAINT_A_TYPEGLOB: {
     is( $x[2],  70, 'value stays the same' );
     is( $x[3],  77, 'value stays the same' );
 
-    $x =~ /\A(\d+)\z/;
+    $x =~ /\A(\d+)\z/ or die;
     $x = $1;
 
     untainted_ok( $x, 'Reclean' );
 
     foreach my $value (values %x) {
-        $value =~ /\A(\d+)\z/;
+        $value =~ /\A(\d+)\z/ or die;
         $value = $1;
     }
 
     untainted_ok( $x{$_}, 'Reclean' ) foreach keys %x;
 
     foreach my $element (@x) {
-        $element =~ /\A(\d+)\z/;
+        $element =~ /\A(\d+)\z/ or die;
         $element = $1;
     }
 
@@ -116,7 +120,7 @@ TAINT_A_TYPEGLOB: {
 TAINT_A_HASH_OBJECT: {
     {
         package My::ObjectHash;
-        sub new { bless {} => shift };
+        sub new { return bless {} => shift };
     }
 
     my $hash_object = My::ObjectHash->new;
@@ -128,7 +132,7 @@ TAINT_A_HASH_OBJECT: {
     tainted_ok( $hash_object->{value}, 'Gets dirty' );
     is( $hash_object->{value}, 84, 'value stays the same' );
 
-    $hash_object->{value} =~ /\A(\d+)\z/;
+    $hash_object->{value} =~ /\A(\d+)\z/ or die;
     $hash_object->{value} = $1;
 
     untainted_ok( $hash_object->{value}, 'Reclean' );
@@ -139,7 +143,7 @@ TAINT_A_HASH_OBJECT: {
 TAINT_AN_ARRAY_OBJECT: {
     {
         package My::ObjectArray;
-        sub new { bless [] => shift };
+        sub new { return bless [] => shift };
     }
 
     my $array_object = My::ObjectArray->new;
@@ -151,7 +155,7 @@ TAINT_AN_ARRAY_OBJECT: {
     tainted_ok( $array_object->[0], 'Gets dirty' );
     is( $array_object->[0], 84, 'value stays the same' );
 
-    $array_object->[0] =~ /\A(\d+)\z/;
+    $array_object->[0] =~ /\A(\d+)\z/ or die;
     $array_object->[0] = $1;
 
     untainted_ok( $array_object->[0], 'Reclean' );
@@ -162,49 +166,49 @@ TAINT_AN_ARRAY_OBJECT: {
 TAINT_A_SCALAR_OBJECT: {
     {
         package My::ObjectScalar;
-        sub new { my $scalar; bless \$scalar => shift };
+        sub new { my $scalar; return bless \$scalar => shift };
     }
 
     my $scalar_object = My::ObjectScalar->new;
     isa_ok( $scalar_object, 'My::ObjectScalar' );
-    $$scalar_object = 84;
+    ${$scalar_object} = 84;
 
-    untainted_ok( $$scalar_object, 'Starts clean' );
+    untainted_ok( ${$scalar_object}, 'Starts clean' );
     taint_deeply( $scalar_object );
-    tainted_ok( $$scalar_object, 'Gets dirty' );
-    is( $$scalar_object, 84, 'value stays the same' );
+    tainted_ok( ${$scalar_object}, 'Gets dirty' );
+    is( ${$scalar_object}, 84, 'value stays the same' );
 
-    $$scalar_object =~ /\A(\d+)\z/;
-    $$scalar_object = $1;
+    ${$scalar_object} =~ /\A(\d+)\z/ or die;
+    ${$scalar_object} = $1;
 
-    untainted_ok( $$scalar_object, 'Reclean' );
-    is( $$scalar_object, 84, 'value stays the same' );
+    untainted_ok( ${$scalar_object}, 'Reclean' );
+    is( ${$scalar_object}, 84, 'value stays the same' );
     isa_ok( $scalar_object, 'My::ObjectScalar' );
 }
 
 TAINT_A_REF: {
     {
         package My::ObjectRef;
-        sub new { 
+        sub new {
             my $ref = \my %hash;;
-            bless \$ref, => shift;
+            return bless \$ref, => shift;
          };
     }
 
     my $ref_object = My::ObjectRef->new;
     isa_ok( $ref_object, 'My::ObjectRef' );
-    $$ref_object->{key} = 1;
+    ${$ref_object}->{key} = 1;
 
-    untainted_ok( $$ref_object->{key}, 'Starts clean' );
+    untainted_ok( ${$ref_object}->{key}, 'Starts clean' );
     taint_deeply( $ref_object );
-    tainted_ok( $$ref_object->{key}, 'Gets dirty' );
-    is( $$ref_object->{key}, 1, 'value stays the same' );
+    tainted_ok( ${$ref_object}->{key}, 'Gets dirty' );
+    is( ${$ref_object}->{key}, 1, 'value stays the same' );
 
-    $$ref_object->{key} =~ /\A(\d+)\z/;
-    $$ref_object->{key} = $1;
+    ${$ref_object}->{key} =~ /\A(\d+)\z/ or die;
+    ${$ref_object}->{key} = $1;
 
-    untainted_ok( $$ref_object->{key}, 'Reclean' );
-    is( $$ref_object->{key}, 1, 'value stays the same' );
+    untainted_ok( ${$ref_object}->{key}, 'Reclean' );
+    is( ${$ref_object}->{key}, 1, 'value stays the same' );
     isa_ok( $ref_object, 'My::ObjectRef' );
 }
 
@@ -224,7 +228,7 @@ TAINT_A_TIED_HASH: {
     tainted_ok( $tied_hash_object->{value}, 'Gets dirty' );
     is( $tied_hash_object->{value}, 84, 'value stays the same' );
 
-    $tied_hash_object->{value} =~ /\A(\d+)\z/;
+    $tied_hash_object->{value} =~ /\A(\d+)\z/ or die;
     $tied_hash_object->{value} = $1;
 
     untainted_ok( $tied_hash_object->{value}, 'Reclean' );
@@ -248,7 +252,7 @@ TAINT_A_TIED_ARRAY: {
     tainted_ok( $tied_array_object->[0], 'Gets dirty' );
     is( $tied_array_object->[0], 56, 'value stays the same' );
 
-    $tied_array_object->[0] =~ /\A(\d+)\z/;
+    $tied_array_object->[0] =~ /\A(\d+)\z/ or die;
     $tied_array_object->[0] = $1;
 
     untainted_ok( $tied_array_object->[0], 'Reclean' );
@@ -265,18 +269,18 @@ TAINT_A_TIED_SCALAR: {
 
     my $tied_scalar_object = tie my $tied_scalar, 'My::TiedScalar';
 
-    $$tied_scalar_object = 63;
+    ${$tied_scalar_object} = 63;
 
-    untainted_ok( $$tied_scalar_object, 'Starts clean' );
+    untainted_ok( ${$tied_scalar_object}, 'Starts clean' );
     taint_deeply( \$tied_scalar );
-    tainted_ok( $$tied_scalar_object, 'Gets dirty' );
-    is( $$tied_scalar_object, 63, 'value stays the same' );
+    tainted_ok( ${$tied_scalar_object}, 'Gets dirty' );
+    is( ${$tied_scalar_object}, 63, 'value stays the same' );
 
-    $$tied_scalar_object =~ /\A(\d+)\z/;
-    $$tied_scalar_object = $1;
+    ${$tied_scalar_object} =~ /\A(\d+)\z/ or die;
+    ${$tied_scalar_object} = $1;
 
-    untainted_ok( $$tied_scalar_object, 'Reclean' );
-    is( $$tied_scalar_object, 63, 'value stays the same' );
+    untainted_ok( ${$tied_scalar_object}, 'Reclean' );
+    is( ${$tied_scalar_object}, 63, 'value stays the same' );
 }
 
 TAINT_AN_OVERLOADED_OBJECT: {
@@ -287,7 +291,7 @@ TAINT_AN_OVERLOADED_OBJECT: {
 
         sub as_string {
             my $self = shift;
-            return "%$self";
+            return "%{$self}";
         }
     }
 
@@ -300,7 +304,7 @@ TAINT_AN_OVERLOADED_OBJECT: {
     tainted_ok( $overloaded_object->{value}, 'Gets dirty' );
     is( $overloaded_object->{value}, 99, 'value stays the same' );
 
-    $overloaded_object->{value} =~ /\A(\d+)\z/;
+    $overloaded_object->{value} =~ /\A(\d+)\z/ or die;
     $overloaded_object->{value} = $1;
 
     untainted_ok( $overloaded_object->{value}, 'Reclean' );

@@ -1,7 +1,10 @@
 #!perl -T
 
+use warnings;
+use strict;
+
 BEGIN {
-    for($0, $^X) {
+    for($0, $^X) { ## no critic (Variables::ProhibitPunctuationVars)
         ($_) = /(.*)/;
     }
 }
@@ -9,7 +12,7 @@ BEGIN {
 use Test::More;
 use Test::Taint tests => 10;
 
-use constant VAR => 'VAR';
+use constant VAR => 'VAR'; ## no critic (ValuesAndExpressions::ProhibitConstantPragma)
 
 taint_checking_ok();
 
@@ -17,7 +20,7 @@ my $foo = 43;
 untainted_ok( $foo, 'Starts clean' );
 taint($foo);
 tainted_ok( $foo, 'Gets dirty' );
-$foo =~ /(\d+)/;
+$foo =~ /(\d+)/ or die;
 $foo = $1;
 untainted_ok( $foo, 'Reclean' );
 

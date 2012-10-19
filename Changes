@@ -1,5 +1,18 @@
 Revision history for Perl extension Test::Taint
 
+1.06    Fri Oct 19 11:30:31 CDT 2012
+        [ENHANCEMENTS]
+        tainted() now localizes $SIG{__DIE__} before performing the
+        taint check.  If the calling program has its own $SIG{__DIE__},
+        we don't want to use it.  Thanks, Pete Krawczyk.
+        https://rt.cpan.org/Ticket/Display.html?id=23507
+
+        [FIXES]
+        Checks for undef before opening files when trying to create
+        some taint. Thanks Frédéric Buclin.
+        https://rt.cpan.org/Ticket/Display.html?id=51246
+
+
 1.04    Mon Aug  9 22:06:10 CDT 2004
         No differences from 1.03_01.
 

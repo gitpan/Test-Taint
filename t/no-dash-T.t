@@ -1,11 +1,13 @@
 #!perl -w
+# Note the lack of -T in the shebang
 
-# Note the lack of -T there
+use warnings;
+use strict;
 
 use Test::Taint tests=>4;
 use Test::More;
 
-ok( !taint_checking(), "Taint checking is off" );
+ok( !taint_checking(), 'Taint checking is off' );
 
 my $foo = 43;
 untainted_ok( $foo, 'Starts clean' );

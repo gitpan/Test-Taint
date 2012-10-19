@@ -1,19 +1,20 @@
 package Test::Taint;
 
+## no critic (Bangs::ProhibitVagueNames)
+## We're dealing with abstract vars like "$var" in this code.
+
 =head1 NAME
 
 Test::Taint - Tools to test taintedness
 
 =head1 VERSION
 
-Version 1.04
-
-    $Header: /home/cvs/test-taint/Taint.pm,v 1.16 2004/08/10 03:06:57 andy Exp $
+Version 1.06
 
 =cut
 
 use vars qw( $VERSION );
-$VERSION = "1.04";
+$VERSION = "1.06";
 
 =head1 SYNOPSIS
 
@@ -51,7 +52,7 @@ use vars qw( $TAINT );
 my $Test = Test::Builder->new;
 
 use vars qw( @EXPORT );
-@EXPORT = qw( 
+@EXPORT = qw(
     taint             taint_deeply
     tainted           tainted_deeply
     tainted_ok        tainted_ok_deeply
@@ -67,7 +68,7 @@ sub import {
     my $caller = caller;
     no strict 'refs';
     for my $sub ( @EXPORT ) {
-        *{$caller.'::'.$sub} = \&$sub;
+        *{$caller.'::'.$sub} = \&{$sub};
     }
     $Test->exported_to($caller);
     $Test->plan(@_);
@@ -89,10 +90,10 @@ sub _deeply_traverse {
             or next;
 
         # taint the contents of tied objects
-        if(my $tied = $realtype eq 'HASH'   ? tied %$node : 
-                      $realtype eq 'ARRAY'  ? tied @$node :
-                      $realtype eq 'SCALAR' ? tied $$node : 
-                      $realtype eq 'REF'    ? tied $$node : undef)  {
+        if(my $tied = $realtype eq 'HASH'   ? tied %{$node} :
+                      $realtype eq 'ARRAY'  ? tied @{$node} :
+                      $realtype eq 'SCALAR' ? tied ${$node} :
+                      $realtype eq 'REF'    ? tied ${$node} : undef) {
             push @stack, $tied;
             next;
         }
@@ -103,10 +104,10 @@ sub _deeply_traverse {
 
         # perform an action on the node, then push them on the stack for traversal
         push @stack,
-            $realtype eq 'HASH'   ? $callback->(values %$node) :
-            $realtype eq 'ARRAY'  ? $callback->(@$node)        :
-            $realtype eq 'SCALAR' ? $callback->($$node)        :
-            $realtype eq 'REF'    ? $callback->($$node)        :
+            $realtype eq 'HASH'   ? $callback->(values %{$node}) :
+            $realtype eq 'ARRAY'  ? $callback->(@{$node})        :
+            $realtype eq 'SCALAR' ? $callback->(${$node})        :
+            $realtype eq 'REF'    ? $callback->(${$node})        :
             map $callback->(*$node{$_}), qw(SCALAR ARRAY HASH);   #must be a GLOB
     }
 
@@ -205,7 +206,7 @@ variable to make sure they are all not tainted.
 sub untainted_ok_deeply {
     my $var = shift;
     my $msg = shift;
-   
+
     my $ok = !tainted_deeply( $var );
     $Test->ok( $ok, $msg );
 
@@ -237,7 +238,7 @@ Returns boolean saying if C<$var> is tainted.
 sub tainted {
     no warnings qw(void uninitialized);
 
-    return !eval { join('', shift), kill 0; 1 };
+    return !eval { local $SIG{__DIE__} = 'DEFAULT'; join('', shift), kill 0; 1 };
 } # tainted
 
 =head2 tainted_deeply( I<$var> )
@@ -310,6 +311,8 @@ sub taint_deeply {
         sub { taint @_; @_ },
         @_,
     );
+
+    return;
 } # taint_deeply
 
 BEGIN {
@@ -323,7 +326,7 @@ BEGIN {
         last if tainted $TAINT;
 
         # Let's try again. Maybe somebody cleaned those.
-        $TAINT = substr(join("", @ARGV, %ENV), 0, 0);
+        $TAINT = substr(join('', @ARGV, %ENV), 0, 0);
         last if tainted $TAINT;
 
         # If those don't work, go try to open some file from some unsafe
@@ -331,10 +334,11 @@ BEGIN {
         # (Yes, even reading from /dev/null works!)
         local(*FOO);
         for ( qw(/dev/null / . ..), values %INC, $0, $^X ) {
+            next unless defined $_;
             if ( open FOO, $_ ) {
-                my $data;
-                if ( defined sysread FOO, $data, 1 ) {
-                    $TAINT = substr( $data, 0, 0 );
+                my $potentially_tainted_data;
+                if ( defined sysread FOO, $potentially_tainted_data, 1 ) {
+                    $TAINT = substr( $potentially_tainted_data, 0, 0 );
                     last if tainted $TAINT;
                 }
             }
@@ -343,7 +347,7 @@ BEGIN {
     }
 
     # Sanity check
-    die "Our taintbrush should have zero length!" if length $TAINT;
+    die 'Our taintbrush should have zero length!' if length $TAINT;
 }
 
 

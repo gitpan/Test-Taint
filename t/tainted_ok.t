@@ -1,5 +1,8 @@
 #!perl -T
 
+use warnings;
+use strict;
+
 use Test::Taint tests=>3;
 
 my @keys = keys %ENV;

@@ -19,3 +19,12 @@ WriteMakefile(
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Test-Taint-*' },
 );
+
+sub MY::postamble {
+    return <<'MAKE';
+.PHONY: critic
+
+critic:
+	perlcritic -1 -q -profile perlcriticrc Taint.pm t/*.t
+MAKE
+}
